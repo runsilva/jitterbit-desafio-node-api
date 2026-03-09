@@ -107,9 +107,44 @@ async function getAllOrders(req, res) {
       .json({ message: "Erro interno do servidor", error: err.message });
   }
 }
+async function updateOrder(req, res) {
+  try {
+    const { orderId } = req.params;
+
+    const exists = await pool.query(
+      `SELECT "orderId" FROM "Order" WHERE "orderId" = $1`,
+      [orderId],
+    );
+    if (exists.rows.length === 0) {
+      return res.status(404).json({ message: "Pedido não encontrado" });
+    }
+
+    const { value, creationDate, items } = mapOrderInput(req.body);
+
+    await pool.query(
+      `UPDATE "Order" SET "value" = $1, "creationDate" = $2 WHERE "orderId" = $3`,
+      [value, creationDate, orderId],
+    );
+
+    await pool.query(`DELETE FROM "Items" WHERE "orderId" = $1`, [orderId]);
+    for (const item of items) {
+      await pool.query(
+        `INSERT INTO "Items" ("orderId", "productId", "quantity", "price") VALUES ($1, $2, $3, $4)`,
+        [orderId, item.productId, item.quantity, item.price],
+      );
+    }
+
+    return res.status(200).json({ orderId, value, creationDate, items });
+  } catch (err) {
+    return res
+      .status(500)
+      .json({ message: "Erro interno do servidor", error: err.message });
+  }
+}
 
 module.exports = {
   createOrder,
   getOrderById,
   getAllOrders,
+  updateOrder,
 };
