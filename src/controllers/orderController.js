@@ -141,10 +141,32 @@ async function updateOrder(req, res) {
       .json({ message: "Erro interno do servidor", error: err.message });
   }
 }
+async function deleteOrder(req, res) {
+  try {
+    const { orderId } = req.params;
+
+    const exists = await pool.query(
+      `SELECT "orderId" FROM "Order" WHERE "orderId" = $1`,
+      [orderId],
+    );
+    if (exists.rows.length === 0) {
+      return res.status(404).json({ message: "Pedido não encontrado" });
+    }
+
+    await pool.query(`DELETE FROM "Order" WHERE "orderId" = $1`, [orderId]);
+
+    return res.status(200).json({ message: "Pedido deletado com sucesso" });
+  } catch (err) {
+    return res
+      .status(500)
+      .json({ message: "Erro interno do servidor", error: err.message });
+  }
+}
 
 module.exports = {
   createOrder,
   getOrderById,
   getAllOrders,
   updateOrder,
+  deleteOrder,
 };
