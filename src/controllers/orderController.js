@@ -14,7 +14,7 @@ function mapOrderInput(body) {
 function validateOrderBody(body) {
   if (!body.numeroPedido) return "O campo numeroPedido é obrigatorio.";
   if (!body.valorTotal) return "O campo valorTotal é obrigatorio.";
-  if (!body.dataCriacao) return "O campo dataPedido é obrigatorio.";
+  if (!body.dataCriacao) return "O campo dataCriacao é obrigatorio.";
   if (!body.items || !Array.isArray(body.items))
     return "O campo items é obrigatorio e deve ser um array.";
   return null;
@@ -52,6 +52,46 @@ async function createOrder(req, res) {
       .json({ message: "Erro interno do servidor", error: err.message });
   }
 }
+
+async function getOrderById(req, res) {
+  try {
+    const { orderId } = req.params;
+
+    const orderResult = await pool.query(
+      `SELECT 
+      o.*,
+      i."productId",
+      i."quantity",
+      i."price"
+      FROM "Order" o 
+      LEFT JOIN "Items" i ON i."orderId" = o."orderId" 
+      WHERE o."orderId" = $1`,
+      [orderId],
+    );
+
+    if (orderResult.rows.length === 0) {
+      return res.status(404).json({ message: "pedido não encontrado" });
+    }
+
+    const order = {
+      ...orderResult.rows[0],
+      items: orderResult.rows
+        .filter((rows) => rows.productId !== null)
+        .map(({ productId, quantity, price }) => ({
+          productId,
+          quantity,
+          price,
+        })),
+    };
+    return res.status(200).json(order);
+  } catch (err) {
+    return res
+      .status(500)
+      .json({ message: "Erro interno do servidor", error: err.message });
+  }
+}
+
 module.exports = {
   createOrder,
+  getOrderById,
 };
