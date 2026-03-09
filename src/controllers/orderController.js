@@ -91,7 +91,25 @@ async function getOrderById(req, res) {
   }
 }
 
+async function getAllOrders(req, res) {
+  try {
+    const ordersResult = await pool.query(`SELECT * FROM "Order"`);
+    const itemsResult = await pool.query(`SELECT * FROM "Items"`);
+
+    const orders = ordersResult.rows.map((order) => ({
+      ...order,
+      items: itemsResult.rows.filter((item) => item.orderId === order.orderId),
+    }));
+    return res.status(200).json(orders);
+  } catch (err) {
+    return res
+      .status(500)
+      .json({ message: "Erro interno do servidor", error: err.message });
+  }
+}
+
 module.exports = {
   createOrder,
   getOrderById,
+  getAllOrders,
 };
